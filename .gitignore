@@ -1,0 +1,16 @@
+# Visual Studio build output and user-specific settings
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Generated publish output
+app.publish/
+
+# Local IDE and temporary files
+*.pdb
+*.log
+*.tmp
