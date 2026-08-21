@@ -32,7 +32,7 @@ namespace NL_4_Debugger_Test
         UInt32 m_canind = 0;
         private CanAdapterKind activeAdapter = CanAdapterKind.Zlg;
         private Int32 toomossDeviceHandle = -1;
-        private const Byte ToomossCanChannel = 0;
+        private Byte ToomossCanChannel { get { return (Byte)(comboBoxCanChannel.SelectedIndex == 1 ? 1 : 0); } }
         VCI_CAN_OBJ[] m_recobj = new VCI_CAN_OBJ[50];
         Int32[] Int32DataReceiveBuffer = new Int32[100];
         UInt32[] m_arrdevtype = new UInt32[20];
@@ -92,16 +92,20 @@ namespace NL_4_Debugger_Test
             comboBox6.Items.Add("FanOffTim");
             comboBox6.Items.Add("PumpOffTim");
             comboBox6.DropDownHeight = comboBox6.ItemHeight * comboBox6.Items.Count;
-            comboBox2.Items.Add("未请求");
-            comboBox2.Items.Add("自循环");
-            comboBox2.Items.Add("制冷");
+    
+          
+      
 
-            comboBox1.Items.Add("非充电");
-            comboBox1.Items.Add("充电");
+          
+            
 
             comboBoxCanAdapter.Items.Add("周立功 USB-CAN");
-            comboBoxCanAdapter.Items.Add("图莫斯 UTA0401（CAN1）");
+            comboBoxCanAdapter.Items.Add("图莫斯 TUA0503（CAN）");
             comboBoxCanAdapter.SelectedIndex = 0;
+            comboBoxCanChannel.Items.Add("CAN1（通道 0）");
+            comboBoxCanChannel.Items.Add("CAN2（通道 1）");
+            comboBoxCanChannel.SelectedIndex = 0;
+            comboBoxCanChannel.Enabled = false;
 
         }
 
@@ -209,7 +213,13 @@ namespace NL_4_Debugger_Test
             butCANConnect.Text = m_bOpen == 1 ? "断开" : "连接";
             butCANConnect.BackColor = m_bOpen == 1 ? Color.Lime : SystemColors.ControlLight;
             comboBoxCanAdapter.Enabled = m_bOpen == 0;
+            comboBoxCanChannel.Enabled = m_bOpen == 0 && UsingToomoss;
             timerCANRec.Enabled = m_bOpen == 1;
+        }
+
+        private void comboBoxCanAdapter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            comboBoxCanChannel.Enabled = m_bOpen == 0 && comboBoxCanAdapter.SelectedIndex == 1;
         }
 
         private bool OpenActiveCan()
@@ -254,8 +264,11 @@ namespace NL_4_Debugger_Test
             ToomossCan.CanInitConfig config = new ToomossCan.CanInitConfig();
             if (ToomossCan.CAN_GetCANSpeedArg(toomossDeviceHandle, ref config, 500000) != ToomossCan.Success)
             { CloseActiveCan(); MessageBox.Show("图莫斯设备不支持 500 kbps 波特率。", "错误", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); return false; }
-            config.CanMode = 0; // 正常模式；终端电阻由设备拨码/接线决定。
-            if (ToomossCan.CAN_Init(toomossDeviceHandle, ToomossCanChannel, ref config) != ToomossCan.Success || ToomossCan.CAN_StartGetMsg(toomossDeviceHandle, ToomossCanChannel) != ToomossCan.Success)
+            // 与图莫斯 EXAMPLE 一致：正常模式 + 内置 120 Ω 终端电阻。
+            config.CanMode = 0x80;
+            if (ToomossCan.CAN_Init(toomossDeviceHandle, 0, ref config) != ToomossCan.Success ||
+                ToomossCan.CAN_Init(toomossDeviceHandle, 1, ref config) != ToomossCan.Success ||
+                ToomossCan.CAN_StartGetMsg(toomossDeviceHandle, ToomossCanChannel) != ToomossCan.Success)
             { CloseActiveCan(); MessageBox.Show("初始化图莫斯 CAN 通道失败。", "错误", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); return false; }
             ToomossCan.CAN_ClearMsg(toomossDeviceHandle, ToomossCanChannel);
             return true;
@@ -265,7 +278,7 @@ namespace NL_4_Debugger_Test
         {
             if (UsingToomoss)
             {
-                if (toomossDeviceHandle >= 0) { ToomossCan.CAN_StopGetMsg(toomossDeviceHandle, ToomossCanChannel); ToomossCan.CAN_Stop(toomossDeviceHandle, ToomossCanChannel); ToomossCan.USB_CloseDevice(toomossDeviceHandle); toomossDeviceHandle = -1; }
+                if (toomossDeviceHandle >= 0) { ToomossCan.CAN_StopGetMsg(toomossDeviceHandle, ToomossCanChannel); ToomossCan.CAN_Stop(toomossDeviceHandle, 0); ToomossCan.CAN_Stop(toomossDeviceHandle, 1); ToomossCan.USB_CloseDevice(toomossDeviceHandle); toomossDeviceHandle = -1; }
             }
             else PublicClass.VCI_CloseDevice(m_devtype, m_devind);
         }
@@ -409,54 +422,19 @@ namespace NL_4_Debugger_Test
             {
                 case 0:
                     sendFrame1.ID = 0x18FF25EF;
-                    strNum = textBox37.Text;
-                    vartemp1 = int.Parse(strNum);
-                    sendFrame1.Data[0] = (byte)(vartemp1+40);
-                    strNum = comboBox2.Text;
-                    switch (strNum)
-                    {
-                        case "未请求":
-                            vartemp = (0x00 << 4) & 0x30;
-                            break;
-                        case "自循环":
-                            vartemp = (0x01 << 4) & 0x30;
-                            break;
-                        case "制冷":
-                            vartemp = (0x02 << 4) & 0x30;
-                            break;
-                        default:
-                            SendCase = 0;
-                            break;
-
-                    }
+            
+                    
+     
                     sendFrame1.Data[1] = (byte)vartemp;
                     sendFrame1.Data[2] = 0;
                     sendFrame1.Data[3] = 0;
                     sendFrame1.Data[4] = 0;
                     sendFrame1.Data[5] = 0;
-                    strNum = textBox38.Text;
-                    vartemp1 = int.Parse(strNum);
-                    sendFrame1.Data[6] = (byte)(vartemp1 + 40);
-                    strNum = textBox40.Text;
-                    vartemp1 = int.Parse(strNum);
-                    sendFrame1.Data[7] = (byte)(vartemp1 + 40);
+                   
                     break;
                 case 1:
                     sendFrame1.ID = 0x18FF13EF;
-                    strNum = comboBox1.Text;
-                    switch (strNum)
-                    {
-                        case "非充电":
-                            vartemp = (0x00 << 5) & 0x60;
-                            break;
-                        case "充电":
-                            vartemp = (0x01 << 5) & 0x60;
-                            break;
-                        default:
-                            SendCase = 0;
-                            break;
-
-                    }
+                 
                     sendFrame1.Data[1] = 0;
                     sendFrame1.Data[2] = 0;
                     sendFrame1.Data[3] = 0;
@@ -534,25 +512,25 @@ namespace NL_4_Debugger_Test
                 case 0x18FF25EF:
                     if (((ReceiveBuffer[2]>>4) & 0x03) == 0)
                     {
-                        textBox100.Text = "未请求";
+                       
                     }
                     else if (((ReceiveBuffer[2] >> 4) & 0x03) == 1)
                     {
-                        textBox100.Text = "自循环";
+                        
                     }
                     else if (((ReceiveBuffer[2] >> 4) & 0x03) == 2)
                     {
-                        textBox100.Text = "制冷";
+                       
                     }
                     break;
                 case 0x18FF13EF:
                     if (((ReceiveBuffer[7] >> 5) & 0x03) == 0)
                     {
-                        textBox101.Text = "非充电";
+                       
                     }
                     else if (((ReceiveBuffer[7] >> 4) & 0x03) > 0)
                     {
-                        textBox101.Text = "充电";
+                       
                     }
                     break;
                 case 0x18FFBD80:
@@ -560,18 +538,7 @@ namespace NL_4_Debugger_Test
                     textBox54.Text = (ReceiveBuffer[2] * 0.1).ToString();
                     textBox52.Text = (ReceiveBuffer[3] +(ReceiveBuffer[4]<<8)).ToString();
                     textBox87.Text = (ReceiveBuffer[8] *100).ToString();
-                    if ((ReceiveBuffer[6] & 0x07) == 0)
-                    {
-                        textBox50.Text = "OFF";
-                    }
-                    else if ((ReceiveBuffer[6] & 0x07) == 1)
-                    {
-                        textBox50.Text = "ON";
-                    }
-                    else if ((ReceiveBuffer[6] & 0x07) == 3)
-                    {
-                        textBox50.Text = "Fault";
-                    }
+
                     textBox49.Text = (ReceiveBuffer[5]).ToString();
                     textBox46.Text=(ReceiveBuffer[6]&0x07).ToString();
                     textBox51.Text = ((ReceiveBuffer[6]>>3) & 0x01).ToString();
@@ -580,45 +547,32 @@ namespace NL_4_Debugger_Test
                     textBox62.Text = ((ReceiveBuffer[6] >> 6) & 0x01).ToString();
                     textBox86.Text = ((ReceiveBuffer[6] >> 7) & 0x01).ToString();
                     textBox88.Text = ((ReceiveBuffer[7]) & 0x01).ToString();
-                    textBox90.Text = ((ReceiveBuffer[7] >> 1) & 0x01).ToString();
-                    textBox91.Text = ((ReceiveBuffer[7] >> 2) & 0x01).ToString();
+                  
+               
                     textBox47.Text = ((ReceiveBuffer[7] >> 3) & 0x01).ToString();
                     break;
                 case 0x18FFBB86:
-                    textBox67.Text = (ReceiveBuffer[1]*20).ToString();
-                    textBox69.Text = (ReceiveBuffer[2]*0.5-40).ToString();
-                    textBox71.Text = (ReceiveBuffer[3] * 20).ToString();
-                    textBox1.Text = (ReceiveBuffer[4]-40).ToString();
-                    textBox72.Text = (ReceiveBuffer[5]*50).ToString();
-                    textBox66.Text = (ReceiveBuffer[6]&0x7f).ToString();
-                    textBox70.Text = (((ReceiveBuffer[6]>>7)&0x01)).ToString();
-                    Mode_Stus.Text = (ReceiveBuffer[7] & 0x7f).ToString();
-                    textBox26.Text = (((ReceiveBuffer[7] >> 7) & 0x01)+ ((ReceiveBuffer[8]&0x01)<<2)).ToString();
-                    textBox27.Text = (((ReceiveBuffer[8] >> 1) & 0x01)).ToString();
-                    textBox25.Text = (((ReceiveBuffer[8] >> 2) & 0x01)).ToString();
-                    textBox73.Text = (((ReceiveBuffer[8] >> 3) & 0x01)).ToString();
-                    textBox75.Text = (((ReceiveBuffer[8] >> 4) & 0x01)).ToString();
-                    textBox78.Text = (((ReceiveBuffer[8] >> 6) & 0x01)).ToString();
-                    textBox77.Text  = (((ReceiveBuffer[8] >> 7) & 0x01)).ToString();
+
+                
+
+
                     break;
                 case 0x18FFBC86:
                     textBox9.Text = (ReceiveBuffer[1] + (ReceiveBuffer[2]<<8)).ToString();
                     textBox16.Text = (ReceiveBuffer[3]&0x0f).ToString();
                     textBox14.Text = ((ReceiveBuffer[3]>>5) & 0x03).ToString();
                     textBox11.Text = ((ReceiveBuffer[3] >>7)).ToString();
-                    textBox12.Text = ((ReceiveBuffer[4]&0x0f)).ToString();
-                    textBox13.Text = ((ReceiveBuffer[4] >>4)&0X03).ToString();
-                    textBox15.Text = ((ReceiveBuffer[4] >>6) & 0X03).ToString();
-                    textBox4.Text = ((ReceiveBuffer[5]>>1)&0X01).ToString();
-                    textBox5.Text = (((((ReceiveBuffer[5] & 0XFC )>>2))+ ((ReceiveBuffer[6]&0X03)<<6))-60).ToString();
-                    textBox8.Text = ((ReceiveBuffer[6] >> 3)&0X01).ToString();
+                  
+             
+  
+   
                     textBox3.Text = (((ReceiveBuffer[7] & 0x3f) *16 )+ ((ReceiveBuffer[6] >> 4)&0x0f)).ToString();//((ReceiveBuffer[6] >> 4) & 0X0F+(ReceiveBuffer[7]<<4)).ToString();
                     textBox7.Text = ((ReceiveBuffer[7] >> 6) & 0X01).ToString();
-                    textBox10.Text = ((ReceiveBuffer[7] >> 7) & 0X01).ToString();             
+                 
                     break;
                 case 0x18FF3A86:
-                    textBox32.Text = ((ReceiveBuffer[4]&0X01)).ToString();
-                    textBox39.Text = ((ReceiveBuffer[4]>>1)&0X03).ToString();
+                 
+
                     break;
                 case 0x18FF7321:
                     textBox44.Text = ((ReceiveBuffer[1])).ToString();
@@ -786,10 +740,10 @@ namespace NL_4_Debugger_Test
                             textBox92.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 42:
-                            textBox89.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+
                             break;
                         case 43:
-                            textBox55.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+
                             break;
                         default:
 
