@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.Diagnostics;
 
 
 namespace NL_4_Debugger_Test
@@ -44,53 +45,56 @@ namespace NL_4_Debugger_Test
         public Form1()
         {
             InitializeComponent();
-            CaptureDesignLayout();
-            Resize += Form1_Resize;
-            comboBox6.Items.Add("CompForceCtrl");//0
+
+            // 设计器只加载静态布局，避免 CAN/缩放等运行期代码干扰 Visual Studio 设计视图。
+            if (IsDesignTimeHost())
+                return;
+
+         //   comboBox6.Items.Add("CompForceCtrl");//0
             comboBox6.Items.Add("ExvForceCtrl");//1
-            comboBox6.Items.Add("PumpForceCtrl");//2
-            comboBox6.Items.Add("FanForceCtrl");//3
-            comboBox6.Items.Add("CompInitTim");//4
+           // comboBox6.Items.Add("PumpForceCtrl");//2
+           // comboBox6.Items.Add("FanForceCtrl");//3
+           // comboBox6.Items.Add("CompInitTim");//4
             comboBox6.Items.Add("ExvInitTim");
-            comboBox6.Items.Add("CompInitVal");
+           // comboBox6.Items.Add("CompInitVal");
             comboBox6.Items.Add("ExvInitVal");
-            comboBox6.Items.Add("ComChgTim");
+           // comboBox6.Items.Add("ComChgTim");
             comboBox6.Items.Add("ExvChgTim");
-            comboBox6.Items.Add("ComOffTim");
-            comboBox6.Items.Add("PIDCompKp");
-            comboBox6.Items.Add("PIDCompKi");
+            //comboBox6.Items.Add("ComOffTim");
+            //comboBox6.Items.Add("PIDCompKp");
+            //comboBox6.Items.Add("PIDCompKi");
             comboBox6.Items.Add("PtTarTsh");
-            comboBox6.Items.Add("Ed1");
-            comboBox6.Items.Add("Ed2");
-            comboBox6.Items.Add("Ed3");
-            comboBox6.Items.Add("Ed4");
-            comboBox6.Items.Add("Fd1");
-            comboBox6.Items.Add("Fd2");
-            comboBox6.Items.Add("FanChgTim");
-            comboBox6.Items.Add("PumpSpeed1");
-            comboBox6.Items.Add("PumpSpeed2");
-            comboBox6.Items.Add("PumpSpeed3");
-            comboBox6.Items.Add("PumpSpeed4");
-            comboBox6.Items.Add("PumpSpeed5");
-            comboBox6.Items.Add("Wt1");
-            comboBox6.Items.Add("Wt2");
-            comboBox6.Items.Add("Wt3");
-            comboBox6.Items.Add("Bt1");
-            comboBox6.Items.Add("Bt2");
-            comboBox6.Items.Add("FanSpdMax");
-            comboBox6.Items.Add("FanInitSpd");
-            comboBox6.Items.Add("CompSpdMin");
-            comboBox6.Items.Add("FanSpdMax");
-            comboBox6.Items.Add("CompSpdMax");
-            comboBox6.Items.Add("CompHPdecTim");
-            comboBox6.Items.Add("CompOnLps");
-            comboBox6.Items.Add("CompOnHps");
-            comboBox6.Items.Add("CompChgCoef");
-            comboBox6.Items.Add("CompOffWtemp");
+          //  comboBox6.Items.Add("Ed1");
+           // comboBox6.Items.Add("Ed2");
+           // comboBox6.Items.Add("Ed3");
+           // comboBox6.Items.Add("Ed4");
+           // comboBox6.Items.Add("Fd1");
+           // comboBox6.Items.Add("Fd2");
+            //comboBox6.Items.Add("FanChgTim");
+           // comboBox6.Items.Add("PumpSpeed1");
+           // comboBox6.Items.Add("PumpSpeed2");
+           // comboBox6.Items.Add("PumpSpeed3");
+            //comboBox6.Items.Add("PumpSpeed4");
+            //comboBox6.Items.Add("PumpSpeed5");
+            //comboBox6.Items.Add("Wt1");
+            //comboBox6.Items.Add("Wt2");
+           // comboBox6.Items.Add("Wt3");
+           // comboBox6.Items.Add("Bt1");
+            //comboBox6.Items.Add("Bt2");
+           // comboBox6.Items.Add("FanSpdMax");
+           // comboBox6.Items.Add("FanInitSpd");
+           // comboBox6.Items.Add("CompSpdMin");
+            //comboBox6.Items.Add("FanSpdMax");
+            //comboBox6.Items.Add("CompSpdMax");
+            //comboBox6.Items.Add("CompHPdecTim");
+            //comboBox6.Items.Add("CompOnLps");
+            //comboBox6.Items.Add("CompOnHps");
+            //comboBox6.Items.Add("CompChgCoef");
+          //  comboBox6.Items.Add("CompOffWtemp");
             comboBox6.Items.Add("ExvOnMax");
             comboBox6.Items.Add("ExvOnMin");
-            comboBox6.Items.Add("FanOffTim");
-            comboBox6.Items.Add("PumpOffTim");
+            //comboBox6.Items.Add("FanOffTim");
+            //comboBox6.Items.Add("PumpOffTim");
             comboBox6.DropDownHeight = comboBox6.ItemHeight * comboBox6.Items.Count;
     
           
@@ -109,9 +113,27 @@ namespace NL_4_Debugger_Test
 
         }
 
+        // Visual Studio 新版 WinForms 设计器通过独立进程加载窗体，
+        // 此时 LicenseManager 不一定会返回 Designtime，必须同时识别设计器宿主。
+        private static bool IsDesignTimeHost()
+        {
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return true;
+
+            string processName = Process.GetCurrentProcess().ProcessName;
+            return processName.IndexOf("devenv", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   processName.IndexOf("designtools", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private void Form1_Load(object sender, EventArgs e)
         {
+            // 仅在程序真实运行后启用缩放。设计器在加载窗体时也会触发 Resize，
+            // 若在构造阶段订阅会改写设计画布中的控件坐标。
+            if (IsDesignTimeHost())
+                return;
 
+            CaptureDesignLayout();
+            Resize += Form1_Resize;
         }
 
         private void CaptureDesignLayout()
@@ -534,22 +556,7 @@ namespace NL_4_Debugger_Test
                     }
                     break;
                 case 0x18FFBD80:
-                    textBox48.Text = (ReceiveBuffer[1] * 4).ToString();
-                    textBox54.Text = (ReceiveBuffer[2] * 0.1).ToString();
-                    textBox52.Text = (ReceiveBuffer[3] +(ReceiveBuffer[4]<<8)).ToString();
-                    textBox87.Text = (ReceiveBuffer[8] *100).ToString();
 
-                    textBox49.Text = (ReceiveBuffer[5]).ToString();
-                    textBox46.Text=(ReceiveBuffer[6]&0x07).ToString();
-                    textBox51.Text = ((ReceiveBuffer[6]>>3) & 0x01).ToString();
-                    textBox53.Text = ((ReceiveBuffer[6] >> 4) & 0x01).ToString();
-                    textBox43.Text = ((ReceiveBuffer[6] >> 5) & 0x01).ToString();
-                    textBox62.Text = ((ReceiveBuffer[6] >> 6) & 0x01).ToString();
-                    textBox86.Text = ((ReceiveBuffer[6] >> 7) & 0x01).ToString();
-                    textBox88.Text = ((ReceiveBuffer[7]) & 0x01).ToString();
-                  
-               
-                    textBox47.Text = ((ReceiveBuffer[7] >> 3) & 0x01).ToString();
                     break;
                 case 0x18FFBB86:
 
@@ -575,22 +582,13 @@ namespace NL_4_Debugger_Test
 
                     break;
                 case 0x18FF7321:
-                    textBox44.Text = ((ReceiveBuffer[1])).ToString();
-                    textBox41.Text = ((ReceiveBuffer[2])).ToString();
-                    textBox42.Text = ((ReceiveBuffer[3])).ToString();
+
                     break;
                 case 0x18FF7319:
                     switch (ReceiveBuffer[3])
                     {
                         case 0:
-                            if ((ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)) == 65535)
-                            {
-                                textBox17.Text = "-1";
-                            }
-                            else
-                            {
-                                textBox17.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
-                            }
+
                             
                             break;
                         case 1:
@@ -605,139 +603,125 @@ namespace NL_4_Debugger_Test
                             }
                             break;
                         case 2:
-                            if ((ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)) == 65535)
-                            {
-                                textBox35.Text = "-1";
-                            }
-                            else
-                            {
-                                textBox35.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
-                            }
+
                             break;
                         case 3:
-                            if ((ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)) == 65535)
-                            {
-                                textBox45.Text = "-1";
-                            }
-                            else
-                            {
-                                textBox45.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
-                            }
+
                             break;
                         case 4:
-                            textBox29.Text=(ReceiveBuffer[5]+( ReceiveBuffer[6]<<8)).ToString();
+                 
                             break;
                         case 5:
                             textBox18.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 6:
-                            textBox20.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                    
                             break;
                         case 7:
                             textBox19.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 8:
-                            textBox22.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                     
                             break;
                         case 9:
                             textBox21.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 10:
-                            textBox24.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                  
                             break;
                         case 11:
-                            textBox23.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                   
                             break;
                         case 12:
-                            textBox58.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+     
                             break;
                         case 13:
                             textBox57.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 14:
-                            textBox56.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox56.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 15:
-                            textBox61.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox61.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 16:
-                            textBox60.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox60.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 17:
-                            textBox59.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox59.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 18:
-                            textBox85.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                            //textBox85.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 19:
-                            textBox84.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox84.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 20:
-                            textBox83.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox83.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 21:
-                            textBox82.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox82.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 22:
-                            textBox81.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                          //  textBox81.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 23:
-                            textBox80.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           // textBox80.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
                             break;
                         case 24:
-                            textBox79.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                          
                             break;
                         case 25:
-                            textBox76.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           
                             break;
                         case 26:
-                            textBox74.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           
                             break;
                         case 27:
 
-                            textBox68.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                          
                             break;
                         case 28:
-                            textBox65.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                            
                             break;
                         case 29:
-                            textBox64.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                          
                             break;
                         case 30:
-                            textBox63.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+              
                             break;
                         case 31:
-                            textBox30.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                  
                             break;
                         case 32:
-                            textBox36.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                       
                             break;
                         case 33:
-                            textBox34.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                            
                             break;
                         case 34:
-                            textBox33.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           
                             break;
                         case 35:
-                            textBox31.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                      
                             break;
                         case 36:
-                            textBox2.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           
                             break;
                         case 37:
-                            textBox96.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                          
                             break;
                         case 38:
-                            textBox95.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           
                             break;
                         case 39:
-                            textBox94.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                          
                             break;
                         case 40:
-                            textBox93.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                            
                             break;
                         case 41:
-                            textBox92.Text = (ReceiveBuffer[5] + (ReceiveBuffer[6] << 8)).ToString();
+                           
                             break;
                         case 42:
 
